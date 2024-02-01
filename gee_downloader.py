@@ -85,9 +85,10 @@ def add_waterpixelsnumber_s2l2(images: ee.ImageCollection, roi_rect, resolution=
     add number of water pixels based on the band of classification in L2 image
     '''
 
+
     def __f(image: ee.Image):
         slc = image.select('SCL')  ## the resolution 20m
-        water_mask = slc.eq(6)
+        water_mask = slc.eq(6).Or(slc.eq(11)) ## water or (snow or ice)
         water = water_mask.rename('water')
         image = image.addBands(water)
         waterpixels = image.reduceRegion(
@@ -98,6 +99,53 @@ def add_waterpixelsnumber_s2l2(images: ee.ImageCollection, roi_rect, resolution=
         ).get('water')
         return image.set('water_num', waterpixels)
 
+    images = images.map(__f)
+    return images
+
+def add_surfacewater_cloudprob(cloud_images: ee.ImageCollection, roi_rect, resolution=10):
+    '''
+    merge surfacewater and cloudprob
+    '''
+    dataset = ee.Image('JRC/GSW1_4/GlobalSurfaceWater').clip(roi_rect)  ### the resolution is 30 m
+
+
+
+
+
+
+def add_cloudpixelsnumber_image(images: ee.ImageCollection, roi_rect, resolution=10, threshold_prob=50):
+    dataset = ee.Image('JRC/GSW1_4/GlobalSurfaceWater').clip(roi_rect)
+    water_mask = dataset.select('occurrence').gt(0)
+
+    # images = images.updateMask(water_mask)
+
+    def __f(image:ee.Image):
+        image = image.updateMask(water_mask)
+        prob = image.select('probability')
+        cloud_mask = prob.gt(threshold_prob)
+        total_mask = prob.gt(0)
+
+        cloud = cloud_mask.rename('cloud')
+        total = total_mask.rename('total')
+
+        image = image.addBands(cloud).addBands(total)
+
+        cloudpixels = image.reduceRegion(
+            reducer=ee.Reducer.sum(),
+            geometry=roi_rect,
+            scale=resolution,
+            maxPixels=1e11
+        ).get('cloud')
+
+        totalpixels = image.reduceRegion(
+            reducer=ee.Reducer.sum(),
+            geometry=roi_rect,
+            scale=resolution,
+            maxPixels=1e11
+        ).get('total')
+
+
+        return image.set('cloud_num', cloudpixels).set('total_num', totalpixels)
     images = images.map(__f)
     return images
 
@@ -235,15 +283,17 @@ class LogRow():
         self.water_percentage = np.nan
         self.waterpixel_regular = np.nan
         self.date = ''
-        self.images = np.nan
+        self.images_l1 = np.nan
+        self.images_l2 = np.nan
         self.water_percentage_image = np.nan
+        self.cloud_percentage_image = np.nan
 
     def get_dataframe(self):
         return pd.DataFrame(data=[
-            ['', self.roi_name, self.water_percentage, self.waterpixel_regular, self.date, self.images,
-             self.water_percentage_image]],
-                            columns=['', 'roi_name', 'water_percentage', 'waterpixel_regular', 'date', 'images',
-                                     'water_percentage_image'])
+            ['', self.roi_name, self.water_percentage, self.waterpixel_regular, self.date, self.images_l2, self.images_l1,
+             self.water_percentage_image,self.cloud_percentage_image]],
+                            columns=['', 'roi_name', 'water_percentage', 'waterpixel_regular', 'date', 'images_l2','images_l1',
+                                     'water_percentage_image','cloud_percentage_image'])
 
 
 class Log():
@@ -251,10 +301,10 @@ class Log():
     def __init__(self, csvf):
         self.__csvf = csvf
         if not os.path.exists(csvf):
-            pd.DataFrame(data=[], columns=['roi_name', 'water_percentage', 'waterpixel_regular', 'date', 'images',
-                                           'water_percentage_image']).to_csv(self.__csvf)
+            pd.DataFrame(data=[], columns=['roi_name', 'water_percentage', 'waterpixel_regular', 'date', 'images_l2', 'images_l1',
+                                           'water_percentage_image','cloud_percentage_image']).to_csv(self.__csvf)
 
-    def water_percentage_regular(self, roi_name):
+    def get_water_percentage_regular(self, roi_name):
         if not os.path.exists(self.__csvf):
             return np.nan, np.nan
         df = pd.read_csv(self.__csvf, index_col=0)
@@ -265,7 +315,7 @@ class Log():
         waterpixel_regular = df_filter.iloc[0]['waterpixel_regular']
         return water_percentage, waterpixel_regular
 
-    def water_percentage_image(self, roi_name, date):
+    def get_water_percentage_image(self, roi_name, date):
         if not os.path.exists(self.__csvf):
             return np.nan
         df = pd.read_csv(self.__csvf, index_col=0)
@@ -275,14 +325,34 @@ class Log():
         water_percentage = df_filter.iloc[0]['water_percentage_image']
         return water_percentage
 
-    def images_cover(self, roi_name, date):
+    def get_cloud_percentage_image(self, roi_name, date):
         if not os.path.exists(self.__csvf):
             return np.nan
         df = pd.read_csv(self.__csvf, index_col=0)
         df_filter = df[(df['roi_name'] == roi_name) & (df['date'] == date)]
         if df_filter.shape[0] == 0:
             return np.nan
-        images = int(df_filter.iloc[0]['images'])
+        cloud_percentage = df_filter.iloc[0]['cloud_percentage_image']
+        return cloud_percentage
+
+    def get_images_cover_l2(self, roi_name, date):
+        if not os.path.exists(self.__csvf):
+            return np.nan
+        df = pd.read_csv(self.__csvf, index_col=0)
+        df_filter = df[(df['roi_name'] == roi_name) & (df['date'] == date)]
+        if df_filter.shape[0] == 0:
+            return np.nan
+        images = int(df_filter.iloc[0]['images_l2'])
+        return images
+
+    def get_images_cover_l1(self, roi_name, date):
+        if not os.path.exists(self.__csvf):
+            return np.nan
+        df = pd.read_csv(self.__csvf, index_col=0)
+        df_filter = df[(df['roi_name'] == roi_name) & (df['date'] == date)]
+        if df_filter.shape[0] == 0:
+            return np.nan
+        images = int(df_filter.iloc[0]['images_l1'])
         return images
 
     def insert(self, logrow: LogRow):
@@ -320,6 +390,10 @@ class Downloader(object):
             'msi_l2': {
                 'data_source': 'COPERNICUS/S2_SR_HARMONIZED',
                 'download_bands': ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B11', 'B12']
+            },
+            'msi_cloudprob' : {
+                'data_source': 'COPERNICUS/S2_CLOUD_PROBABILITY',
+                'download_bands': ['probability']
             }
         }
 
@@ -329,7 +403,13 @@ class Downloader(object):
         self.over_write_l1 = False if 'over_write_l1' not in kwargs else kwargs['over_write_l1']
         self.over_write_l2rgb = False if 'over_write_l2rgb' not in kwargs else kwargs['over_write_l2rgb']
         self.over_write_l2 = False if 'over_write_l2' not in kwargs else kwargs['over_write_l2']
+        self.over_write_cldprob = False if 'over_write_cldprob' not in kwargs else kwargs['over_write_cldprob']
 
+
+        self.cloud_prob_threshold = 60.0 if 'cloud_prob_threshold' not in kwargs else float(kwargs['cloud_prob_threshold'])
+        self.cloud_percentage_threshold = 40.0 if 'cloud_percentage_threshold' not in kwargs else float(kwargs['cloud_percentage_threshold'])
+
+        ##
         self.__download_log_csv = os.path.join(self.save_dir, 'download_log.csv')
         self.log = Log(self.__download_log_csv)
 
@@ -341,8 +421,35 @@ class Downloader(object):
         self.l1_savedir = os.path.join(self.save_dir, 'l1_toa', self.roi_name)
         self.l2_savedir = os.path.join(self.save_dir, 'l2_surf', self.roi_name)
         self.l2rgb_savedir = os.path.join(self.save_dir, 'l2_rgb', self.roi_name)
+        self.cldprob_savedir = os.path.join(self.save_dir, 'cld_prob', self.roi_name)
 
-    def download_s2(self, start_date, end_date, l1=True, l2rgb=True, l2=True):
+
+    def get_s2_cloudpercentage(self, s_d, e_d):
+        images_cloudprob = ee.ImageCollection(self.sensor_info['msi_cloudprob']['data_source']). \
+            filterDate(s_d, e_d).filterBounds(self.roi_rect)
+
+        # images = add_surfacewater_cloudprob(images_cloudprob,roi_rect=self.roi_rect)
+
+        img_count_cloudprob = len(images_cloudprob.getInfo()['features'])
+        images_cloud = add_cloudpixelsnumber_image(images_cloudprob,roi_rect=self.roi_rect,threshold_prob=self.cloud_prob_threshold,resolution=20)
+
+        images_cloud_list = images_cloud.toList(images_cloud.size())
+
+        total_pixels, cloud_pixels = 0, 0
+        for i in range(img_count_cloudprob):
+            img_1 = ee.Image(images_cloud_list.get(i)).clip(self.roi_rect)
+            cloudnum = ee.Number(img_1.get('cloud_num')).getInfo() ##90:30 60:986
+            totalnum = ee.Number(img_1.get('total_num')).getInfo()
+            cloud_pixels += cloudnum
+            total_pixels += totalnum
+
+        if total_pixels == 0:
+            raise Exception('no water pixels')
+        return cloud_pixels/total_pixels*100
+
+
+
+    def download_s2(self, start_date, end_date, l1=True, l2rgb=True, l2=True, cloud_prob=True):
         insert_flag = False
         if not (l1 or l2rgb or l2):
             print("l1 or l2rgb or l2?")
@@ -352,7 +459,7 @@ class Downloader(object):
         ### check regular water body percentage in this ROI
         water_pixel_resolution = 20
         ### search in the log csv
-        water_percentage, waterpixels_regular = self.log.water_percentage_regular(self.roi_name)
+        water_percentage, waterpixels_regular = self.log.get_water_percentage_regular(self.roi_name)
         logrow = LogRow(roi_name=self.roi_name)
         if np.isnan(water_percentage):
             waterpixels_regular, pixels_total = water_pixels_regular(roi_rect=self.roi_rect,
@@ -364,63 +471,125 @@ class Downloader(object):
         logrow.waterpixel_regular = waterpixels_regular
         logrow.water_percentage_image = 0
         logrow.images = 0
+
         if water_percentage < self.water_threshold_regular:
             print(f'water percentage < {self.water_threshold_regular} %, ROI of {self.roi_name} is skiped')
             if insert_flag: self.log.insert(logrow=logrow)
             return
-        for _date in pendulum.period(start_date, end_date):
+
+        for _date in (end_date - start_date):
             logrow.water_percentage_image = 0
+            logrow.cloud_percentage_image = 0
             logrow.images = 0
             s_d, e_d = _date.format('YYYY-MM-DD'), (_date + pendulum.duration(days=1)).format('YYYY-MM-DD')
             logrow.date = s_d
             l1_save_dir = os.path.join(self.l1_savedir, s_d)
             l2_save_dir = os.path.join(self.l2_savedir, s_d)
             l2rgb_save_dir = os.path.join(self.l2rgb_savedir, s_d)
+            cldprob_save_dir = os.path.join(self.cldprob_savedir, s_d)
 
             l1_of = pathlib.Path(l1_save_dir).parent / f'S2_{s_d}_L1TOA-{self.roi_name}.tif'
             l2rgb_of = pathlib.Path(l2rgb_save_dir).parent / f'S2_{s_d}_L2RGB-{self.roi_name}.tif'
             l2_of = pathlib.Path(l2_save_dir).parent / f'S2_{s_d}_L2SURF-{self.roi_name}.tif'
+            cldprob_of = pathlib.Path(cldprob_save_dir).parent / f'S2_{s_d}_CLDPROB-{self.roi_name}.tif'
 
-            img_count_l2 = self.log.images_cover(self.roi_name, s_d)
+            img_count_l2 = self.log.get_images_cover_l2(self.roi_name, s_d)
+            img_count_l1 = self.log.get_images_cover_l1(self.roi_name, s_d)
+
             images_l2 = None
             if np.isnan(img_count_l2):
                 images_l2 = ee.ImageCollection(self.sensor_info['msi_l2']['data_source']). \
                     filterDate(s_d, e_d).filterBounds(self.roi_rect)
                 img_count_l2 = len(images_l2.getInfo()['features'])
                 insert_flag = True
-            logrow.images = img_count_l2
-            if img_count_l2 < 1:
+            logrow.images_l2 = img_count_l2
+
+            images_l1 = None
+            if np.isnan(img_count_l1):
+                images_l1 = ee.ImageCollection(self.sensor_info['msi_l1']['data_source']). \
+                    filterDate(s_d, e_d).filterBounds(self.roi_rect)
+                img_count_l1 = len(images_l1.getInfo()['features'])
+                insert_flag = True
+            logrow.images_l1 = img_count_l1
+
+
+            ## no l1 neither l2, do nothing
+            if img_count_l1 <1 and img_count_l2<1:
                 print(f'no images are found for {s_d}')
                 if insert_flag: self.log.insert(logrow)
                 continue
-            ### check water pixels percentage for the current image
-            water_per = self.log.water_percentage_image(self.roi_name, s_d)
-            if np.isnan(water_per):
-                if images_l2 is None:
-                    images_l2 = ee.ImageCollection(self.sensor_info['msi_l2']['data_source']). \
-                        filterDate(s_d, e_d).filterBounds(self.roi_rect)
-                images_water = add_waterpixelsnumber_s2l2(images=images_l2, roi_rect=self.roi_rect,
-                                                          resolution=water_pixel_resolution)
-                # print(images_water.size().getInfo())
-                images_water_list = images_water.toList(images_water.size())
-                total_pixels, waternum_s2 = 0, 0
-                for i in range(img_count_l2):
-                    img_1 = ee.Image(images_water_list.get(i)).clip(self.roi_rect)
-                    waternum = ee.Number(img_1.get('water_num')).getInfo()
-                    dims = img_1.getInfo()['bands'][-1]['dimensions']
-                    total_pixels += dims[0] * (water_pixel_resolution / 20.0) * dims[1] * (
-                                water_pixel_resolution / 20.0)  ## convert to water_pixel_resolution
-                    waternum_s2 += waternum
-                water_per = waternum_s2 / waterpixels_regular * 100.0
-                insert_flag = True
-            logrow.water_percentage_image = water_per
-            if water_per < self.water_threshold:
-                print(f'water percentage is {round(water_per, 1)} < {self.water_threshold}%, the date {s_d} is skiped')
-                if insert_flag: self.log.insert(logrow)
-                continue
-            ###### download l2 rgb#################
 
-            if images_l2 is None:
+            ## no l2, generally for the dates before 2018-12-14
+            ## filter the images based on the CLOUD PROBILITY dataset, and do not download l2 or l2rgb
+            elif img_count_l2<1:
+                cloud_percentage = self.log.get_cloud_percentage_image(roi_name=self.roi_name, date=s_d)
+                if cloud_percentage > 100:
+                    print(f'no water pixels found in AOI for the current {s_d}')
+                    continue
+                if np.isnan(cloud_percentage):
+                    insert_flag = True
+                    try:
+                        cloud_percentage = self.get_s2_cloudpercentage(s_d=s_d,e_d=e_d)
+                    except Exception as e:
+                        print(f'no water pixels found in AOI for the current {s_d}')
+                        logrow.cloud_percentage_image = 101
+                        if insert_flag: self.log.insert(logrow)
+                        continue
+
+                logrow.cloud_percentage_image = cloud_percentage
+                if cloud_percentage > self.cloud_percentage_threshold:
+                    print(f'cloudy percentage :{cloud_percentage} > {self.cloud_percentage_threshold}')
+                    if insert_flag:self.log.insert(logrow)
+                    continue
+
+                l2, l2rgb = False,False
+
+
+            # no_l2_yes_l1 = False
+            # if img_count_l2 < 1:
+            #     print(f'no images are found for {s_d}')
+            #     if insert_flag: self.log.insert(logrow)
+            #     if l1:  ## force to download level-1
+            #         images_l1 = ee.ImageCollection(self.sensor_info['msi_l2']['data_source']). \
+            #             filterDate(s_d, e_d).filterBounds(self.roi_rect)
+            #         img_count_l1 = len(images_l1.getInfo()['features'])
+            #
+            #     else:
+            #         continue
+
+            ## both l2 and l1 are available, filter the images based on the l2 classification band
+            else:
+                ### check water pixels percentage for the current image
+                water_per = self.log.get_water_percentage_image(self.roi_name, s_d)
+                if np.isnan(water_per):
+                    if images_l2 is None:
+                        images_l2 = ee.ImageCollection(self.sensor_info['msi_l2']['data_source']). \
+                            filterDate(s_d, e_d).filterBounds(self.roi_rect)
+                    images_water = add_waterpixelsnumber_s2l2(images=images_l2, roi_rect=self.roi_rect,
+                                                              resolution=water_pixel_resolution)
+                    # print(images_water.size().getInfo())
+                    images_water_list = images_water.toList(images_water.size())
+                    total_pixels, waternum_s2 = 0, 0
+                    for i in range(img_count_l2):
+                        img_1 = ee.Image(images_water_list.get(i)).clip(self.roi_rect)
+                        waternum = ee.Number(img_1.get('water_num')).getInfo()
+                        dims = img_1.getInfo()['bands'][-1]['dimensions']
+                        total_pixels += dims[0] * (water_pixel_resolution / 20.0) * dims[1] * (
+                                water_pixel_resolution / 20.0)  ## convert to water_pixel_resolution
+                        waternum_s2 += waternum
+                    water_per = waternum_s2 / waterpixels_regular * 100.0
+                    insert_flag = True
+                logrow.water_percentage_image = water_per
+                if water_per < self.water_threshold:
+                    print(
+                        f'water percentage is {round(water_per, 1)} < {self.water_threshold}%, the date {s_d} is skiped')
+                    if insert_flag: self.log.insert(logrow)
+                    continue
+
+
+
+            ###### download l2 rgb#################
+            if (images_l2 is None) and (l2rgb or l2):
                 images_l2 = ee.ImageCollection(self.sensor_info['msi_l2']['data_source']).filterDate(s_d, e_d).filterBounds(self.roi_rect)
 
             dst_crs = None
@@ -441,9 +610,12 @@ class Downloader(object):
                 else:
                     with rasterio.open(l2rgb_of) as src:
                         dst_crs = src.meta['crs']
+
             if dst_crs is None:
                 print('dst_crs is None')
-                sys.exit(-1)
+                # sys.exit(-1)
+
+
             ####### download l2 surface ##############
             if l2:
                 if (not os.path.exists(l2_of)) or self.over_write_l2:
@@ -477,9 +649,31 @@ class Downloader(object):
                     # self.merge_download_dir_l1(save_dir,bandnames=self.sensor_info['msi_l1']['download_bands'],output_f=l1_of)
                     self.merge_download_dir(l1_save_dir, output_f=l1_of,
                                             bandnames=self.sensor_info['msi_l1']['download_bands'], dst_crs=dst_crs)
+
+            if cloud_prob:
+                if (not os.path.exists(cldprob_of)) or self.over_write_cldprob:
+                    images_cldprob = ee.ImageCollection(self.sensor_info['msi_cloudprob']['data_source']).filterDate(s_d,
+                                                                                                         e_d).filterBounds(
+                        self.roi_rect)
+                    print("downloading cloud probility...")
+                    if not os.path.exists(cldprob_save_dir):
+                        os.makedirs(cldprob_save_dir)
+
+                    download_images_roi(images=images_cldprob,
+                                        roi_geo=self.roi_geo,
+                                        save_dir=cldprob_save_dir,
+                                        bands=self.sensor_info['msi_cloudprob']['download_bands'], resolution=self.resolution)
+
+                    print("merging cloud probility....")
+                    # self.merge_download_dir_l1(save_dir,bandnames=self.sensor_info['msi_l1']['download_bands'],output_f=l1_of)
+                    self.merge_download_dir(cldprob_save_dir, output_f=cldprob_of,
+                                            bandnames=self.sensor_info['msi_cloudprob']['download_bands'], dst_crs=dst_crs,include_geo=False)
+
+
+
             if insert_flag: self.log.insert(logrow)
 
-    def merge_download_dir(self, download_dir, output_f,dst_crs=None, bandnames=None):
+    def merge_download_dir(self, download_dir, output_f,dst_crs=None, bandnames=None, include_geo=True):
         tifs = [_ for _ in glob.glob(os.path.join(download_dir, f'*_*_*.tif')) if
                 (os.path.getsize(_) / 1024.0) > 100]
         if len(tifs) < 1:
@@ -488,47 +682,21 @@ class Downloader(object):
         info_pickels = glob.glob(os.path.join(download_dir, "*.pickle"))
         descriptions = []
         for _pf in info_pickels:
-            _id, theta_v, theta_s, azimuth_v, azimuth_s = self.__extract_geometry_from_info(_pf)
-            descriptions.append(','.join([_id, str(theta_v), str(theta_s), str(azimuth_v), str(azimuth_s)]))
+            if include_geo:
+                _id, theta_v, theta_s, azimuth_v, azimuth_s = self.__extract_geometry_from_info(_pf)
+                descriptions.append(','.join([_id, str(theta_v), str(theta_s), str(azimuth_v), str(azimuth_s)]))
+                descriptions_meta = 'product_id,theta_v,theta_s,azimuth_v,azimuth_s'
+            else:
+                descriptions.append(self.__extract_id_from_info(_pf))
+                descriptions_meta = 'product_id'
+
+
+
         ret, dst_crs = merge_tifs(tifs, output_f, descriptions=':'.join(descriptions),
                          descriptions_meta='product_id,theta_v,theta_s,azimuth_v,azimuth_s', bandnames=bandnames,dst_crs=dst_crs)
         if ret == 1 and self.remove_download_tiles:
             shutil.rmtree(download_dir)
         return dst_crs
-
-    def merge_download_dir_l1(self, download_dir, bandnames, output_f):
-        '''
-        @download_dir: the directory that contains the downloaded tifs
-        '''
-        s_d = pathlib.Path(download_dir).name
-        # l1_of = pathlib.Path(download_dir).parent / f'S2_{s_d}_L1TOA-{self.roi_name}.tif'
-        over_write = self.over_write_l1
-        if os.path.exists(output_f) and over_write == False:
-            return
-        info_pickels = glob.glob(os.path.join(download_dir, "*.pickle"))
-        descriptions = []
-        temp_of_s = []
-        for _pf in info_pickels:
-            _id, theta_v, theta_s, azimuth_v, azimuth_s = self.__extract_geometry_from_info(_pf)
-            descriptions.append(','.join([_id, str(theta_v), str(theta_s), str(azimuth_v), str(azimuth_s)]))
-            tilename = os.path.basename(_pf).split('_')[2]
-            tifs = [_ for _ in glob.glob(os.path.join(download_dir, f'*_{tilename}_*.tif')) if
-                    (os.path.getsize(_) / 1024.0) > 100]
-            if len(tifs) < 1:
-                print(f"warn, no valid tifs found for tile {tilename}")
-                continue
-            temp_of = os.path.join(download_dir, f'{tilename}.tif')
-            phi = abs(azimuth_v - azimuth_s)
-            phi = phi if phi < 180 else 360 - phi
-            obs_geo = (theta_v, theta_s, phi)
-            ret = merge_tifs(tifs, temp_of, descriptions='', descriptions_meta='', obs_geo=obs_geo, bandnames=bandnames)
-            temp_of_s.append(temp_of)
-        if len(temp_of_s) > 1:
-            ret = merge_tifs(temp_of_s, output_f, descriptions=':'.join(descriptions),
-                             descriptions_meta='product_id,theta_v, theta_s, azimuth_v, azimuth_s',
-                             obs_geo=None, bandnames=bandnames + ['theta_v', 'theta_s', 'phi'])
-            if ret == 1 and self.remove_download_tiles:
-                shutil.rmtree(download_dir)
 
     def __extract_geometry_from_info(self, pickle_file):
         #     print(pickle_file)
@@ -550,6 +718,12 @@ class Downloader(object):
         theta_v, theta_s, azimuth_v, azimuth_s = np.asarray(theta_v), np.asarray(theta_s), np.asarray(
             azimuth_v), np.asarray(azimuth_s)
         return (properties['PRODUCT_ID'], theta_v.mean(), theta_s.mean(), azimuth_v.mean(), azimuth_s.mean())
+
+    def __extract_id_from_info(self, pickle_file):
+        with open(pickle_file,'rb') as f:
+            info = pickle.load(f)
+        return info['id'].split('/')[-1]
+
 
 
 if __name__ == '__main__':
