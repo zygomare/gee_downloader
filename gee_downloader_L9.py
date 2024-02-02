@@ -632,21 +632,16 @@ class Downloader(object):
         #     print(pickle_file)
         with open(pickle_file, 'rb') as f:
             info = pickle.load(f)
-        theta_v, theta_s, elev_s, azimuth_s = [], [], [], []
+        theta_v, theta_s, azimuth_s,azimuth_v= [0], [], [], [0]  ##set view zenith angle and azimuth 0. 
         #     print(info['bands'][0].keys())
         properties = info['properties']
         for key in properties.keys():
-            if 'MEAN_INCIDENCE_ZENITH_ANGLE' in key:
-                theta_v.append(properties[key])
-            if 'MEAN_SOLAR_ZENITH_ANGLE' in key:
-                #print(key, properties[key])
-                theta_s.append(properties[key])
             if 'SUN_ELEVATION' in key:
-                elev_s.append(properties[key])
+                theta_s.append(90-float(properties[key])) ## convert SUN_ELEVATION to zenith angle
             if 'SUN_AZIMUTH' in key:
                 azimuth_s.append(properties[key])
-        theta_v, theta_s, elev_s, azimuth_s = np.asarray(theta_v), np.asarray(theta_s), np.asarray(elev_s), np.asarray(azimuth_s)
-        return (properties['LANDSAT_PRODUCT_ID'], theta_v, theta_s, elev_s.mean(), azimuth_s.mean())
+        theta_v, theta_s, azimuth_s ,azimuth_v= np.asarray(theta_v), np.asarray(theta_s), np.asarray(azimuth_s), np.asarray(azimuth_v)
+        return (properties['LANDSAT_PRODUCT_ID'], theta_v.mean(), theta_s.mean(), azimuth_s.mean(), azimuth_v.mean())
     def __extract_id_from_info(self, pickle_file):
         with open(pickle_file,'rb') as f:
             info = pickle.load(f)
