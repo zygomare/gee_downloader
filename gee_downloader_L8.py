@@ -81,8 +81,8 @@ def add_waterpixelsnumber_L8(images: ee.ImageCollection, roi_rect, resolution=10
     add number of water pixels based on the band of classification in L2 image
     '''
     def __f(image: ee.Image):
-        ndwi = image.normalizedDifference(['SR_B2', 'SR_B5'])  ## the resolution 20m
-        water_mask = ndwi.gt(-0.001) ## water or (snow or ice)
+        ndwi = image.normalizedDifference(['SR_B3', 'SR_B5'])  ## the resolution 20m
+        water_mask = ndwi.gt(0.001) ## water or (snow or ice)
         water = water_mask.rename('water')
         image = image.addBands(water)
         waterpixels = image.reduceRegion(
@@ -442,6 +442,7 @@ class Downloader(object):
         if total_pixels == 0:
             raise Exception('no water pixels')
         return cloud_pixels/total_pixels*100
+
     def download_L8(self, start_date, end_date, l1=True, l2rgb=True, l2=True, cloud_prob=True):
         insert_flag = False
         if not (l1 or l2rgb or l2):
@@ -668,11 +669,11 @@ class Downloader(object):
 
 
 if __name__ == '__main__':
-    grid_cells_dir = '/media/thomas/Arctus_data2/0_Arctus_Project/19_SAGEPORT/data/geojson/Default_AOI_geojson/'
+    grid_cells_dir = './'
     configdic = {'over_write':False,'remove_download_tiles':True}
     downloader = Downloader(water_threshold=5,
                         water_threshold_regular=10,
-                        savedir="/media/thomas/Arctus_data2/0_Arctus_Project/19_SAGEPORT/data/l8_gee_Contrecoeur/",**configdic)
+                        savedir="./",**configdic)
     # filename = os.listdir(grid_cells_dir)[6]
     # geojson_f = os.path.join(grid_cells_dir, filename)
     def download_cell(downloader, geojson_f):
@@ -684,7 +685,7 @@ if __name__ == '__main__':
         #                      end_date='2021-08-31',
         #                      download_l2_rgb=True)
         # downloader.l8_oli(start_date='2021-08-01',end_date='2021-08-31',l1=True,l2rgb=True, l2=True)
-        downloader.download_L8(start_date='2013-04-01', end_date='2024-01-31', l1=True, l2rgb=True, l2=True)
+        downloader.download_L8(start_date='2013-08-20', end_date='2013-08-21', l1=True, l2rgb=True, l2=True)
         # downloader.l8_oli(start_date='2019-08-01', end_date='2019-08-31', l1=False, l2rgb=False,l2=True)
     # download_dir = "C:/Users/pany0/OneDrive/Desktop/geedownload_test/l2_surf/00007_HBE_5150879N7954083W_20KM/2021-08-07"
     # downloader.merge_download_dir(download_dir,level='l2')
