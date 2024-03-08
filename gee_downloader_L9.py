@@ -81,8 +81,10 @@ def add_waterpixelsnumber_L9(images: ee.ImageCollection, roi_rect, resolution=10
     add number of water pixels based on the band of classification in L2 image
     '''
     def __f(image: ee.Image):
+        opticalBands = image.select('SR_B.').multiply(0.0000275).add(-0.2)
+        image = image.addBands(srcImg=opticalBands, overwrite=True)
         ndwi = image.normalizedDifference(['SR_B2', 'SR_B5'])  ## the resolution 20m
-        water_mask = ndwi.gt(0.1) ## water or (snow or ice)
+        water_mask = ndwi.gt(0.1)  ## water or (snow or ice)
         water = water_mask.rename('water')
         image = image.addBands(water)
         waterpixels = image.reduceRegion(
@@ -414,7 +416,7 @@ class Downloader(object):
         self.cldprob_savedir = os.path.join(self.save_dir, 'cld_prob', self.roi_name)
 
     def get_L9_cloudpercentage(self, s_d, e_d):
-        images_cloudprob = ee.ImageCollection(self.sensor_info['L9_oli_l1']['data_source']). \
+        images_cloudprob = ee.ImageCollection(self.sensor_info['l9_oli_l1']['data_source']). \
             filterDate(s_d, e_d).filterBounds(self.roi_rect)
         # images = add_surfacewater_cloudprob(images_cloudprob,roi_rect=self.roi_rect)
         img_count_cloudprob = len(images_cloudprob.getInfo()['features'])
@@ -474,14 +476,14 @@ class Downloader(object):
             img_count_l1 = self.log.get_images_cover_l1(self.roi_name, s_d)
             images_l2 = None
             if np.isnan(img_count_l2):
-                images_l2 = ee.ImageCollection(self.sensor_info['L9_oli_l2']['data_source']). \
+                images_l2 = ee.ImageCollection(self.sensor_info['l9_oli_l2']['data_source']). \
                     filterDate(s_d, e_d).filterBounds(self.roi_rect)
                 img_count_l2 = len(images_l2.getInfo()['features'])
                 insert_flag = True
             logrow.images_l2 = img_count_l2
             images_l1 = None
             if np.isnan(img_count_l1):
-                images_l1 = ee.ImageCollection(self.sensor_info['L9_oli_l1']['data_source']). \
+                images_l1 = ee.ImageCollection(self.sensor_info['l9_oli_l1']['data_source']). \
                     filterDate(s_d, e_d).filterBounds(self.roi_rect)
                 img_count_l1 = len(images_l1.getInfo()['features'])
                 insert_flag = True
@@ -519,7 +521,7 @@ class Downloader(object):
                 water_per = self.log.get_water_percentage_image(self.roi_name, s_d)
                 if np.isnan(water_per):
                     if images_l2 is None:
-                        images_l2 = ee.ImageCollection(self.sensor_info['L9_oli_l2']['data_source']). \
+                        images_l2 = ee.ImageCollection(self.sensor_info['l9_oli_l2']['data_source']). \
                             filterDate(s_d, e_d).filterBounds(self.roi_rect)
                     images_water = add_waterpixelsnumber_L9(images=images_l2, roi_rect=self.roi_rect,
                                                               resolution=water_pixel_resolution)
@@ -543,7 +545,7 @@ class Downloader(object):
                     continue
             ###### download l2 rgb#################
             if (images_l2 is None) and (l2rgb or l2):
-                images_l2 = ee.ImageCollection(self.sensor_info['L9_oli_l2']['data_source']).filterDate(s_d, e_d).filterBounds(self.roi_rect)
+                images_l2 = ee.ImageCollection(self.sensor_info['l9_oli_l2']['data_source']).filterDate(s_d, e_d).filterBounds(self.roi_rect)
             dst_crs = None
             if l2rgb:
                 # l2rgb_of = pathlib.Path(l2_save_dir).parent / f'S2_{s_d}_L2RGB-{self.roi_name}.tif'
@@ -554,7 +556,7 @@ class Downloader(object):
                     download_images_roi(images=images_l2,
                                         roi_geo=self.roi_geo,
                                         save_dir=l2rgb_save_dir,
-                                        bands=self.sensor_info['L9_oli_rgb']['download_bands'],
+                                        bands=self.sensor_info['l9_oli_rgb']['download_bands'],
                                         resolution=self.resolution)
                     print("merging l2 rgb....")
                     dst_crs = self.merge_download_dir(l2rgb_save_dir, output_f=l2rgb_of,dst_crs=dst_crs)
@@ -573,41 +575,42 @@ class Downloader(object):
                     download_images_roi(images=images_l2,
                                         roi_geo=self.roi_geo,
                                         save_dir=l2_save_dir,
-                                        bands=self.sensor_info['L9_oli_l2']['download_bands'],
+                                        bands=self.sensor_info['l9_oli_l2']['download_bands'],
                                         resolution=self.resolution)
                     print("merging l2 surface....")
                     self.merge_download_dir(l2_save_dir, output_f=l2_of,dst_crs=dst_crs)
             ####### download l1 ###########################
             if l1:
                 if (not os.path.exists(l1_of)) or self.over_write_l1:
-                    images_l1 = ee.ImageCollection(self.sensor_info['L9_oli_l1']['data_source']).filterDate(s_d,e_d).filterBounds(self.roi_rect)
+                    images_l1 = ee.ImageCollection(self.sensor_info['l9_oli_l1']['data_source']).filterDate(s_d,e_d).filterBounds(self.roi_rect)
                     print("downloading l1...")
                     if not os.path.exists(l1_save_dir):
                         os.makedirs(l1_save_dir)
                     download_images_roi(images=images_l1,
                                         roi_geo=self.roi_geo,
                                         save_dir=l1_save_dir,
-                                        bands=self.sensor_info['L9_oli_l1']['download_bands'], resolution=self.resolution)
+                                        bands=self.sensor_info['l9_oli_l1']['download_bands'], resolution=self.resolution)
                     print("merging l1....")
                     # self.merge_download_dir_l1(save_dir,bandnames=self.sensor_info['msi_l1']['download_bands'],output_f=l1_of)
                     self.merge_download_dir(l1_save_dir, output_f=l1_of,
-                                            bandnames=self.sensor_info['L9_oli_l1']['download_bands'], dst_crs=dst_crs)
+                                            bandnames=self.sensor_info['l9_oli_l1']['download_bands'], dst_crs=dst_crs)
             if cloud_prob:
                 if (not os.path.exists(cldprob_of)) or self.over_write_cldprob:
-                    images_cldprob = ee.ImageCollection(self.sensor_info['L9_oli_l1']['data_source']).filterDate(s_d,e_d).filterBounds(self.roi_rect)
+                    images_cldprob = ee.ImageCollection(self.sensor_info['l9_oli_l1']['data_source']).filterDate(s_d,e_d).filterBounds(self.roi_rect)
                     print("downloading cloud probility...")
                     if not os.path.exists(cldprob_save_dir):
                         os.makedirs(cldprob_save_dir)
                     download_images_roi(images=images_cldprob,
                                         roi_geo=self.roi_geo,
                                         save_dir=cldprob_save_dir,
-                                        bands=self.sensor_info['L9_oli_l1']['download_bands'], resolution=self.resolution)
+                                        bands=self.sensor_info['l9_oli_l1']['download_bands'], resolution=self.resolution)
                     print("merging cloud probility....")
                     # self.merge_download_dir_l1(save_dir,bandnames=self.sensor_info['msi_l1']['download_bands'],output_f=l1_of)
                     self.merge_download_dir(cldprob_save_dir, output_f=cldprob_of,
-                                            bandnames=self.sensor_info['L9_oli_l1']['download_bands'], dst_crs=dst_crs,include_geo=False)
+                                            bandnames=self.sensor_info['l9_oli_l1']['download_bands'], dst_crs=dst_crs,include_geo=False)
             if insert_flag: self.log.insert(logrow)
-    def merge_download_dir(self, download_dir, output_f,dst_crs=None, bandnames=None, include_geo=True):
+
+    def merge_download_dir(self, download_dir, output_f, dst_crs=None, bandnames=None, include_geo=True):
         tifs = [_ for _ in glob.glob(os.path.join(download_dir, f'*_*_*.tif')) if
                 (os.path.getsize(_) / 1024.0) > 100]
         if len(tifs) < 1:
@@ -617,31 +620,34 @@ class Downloader(object):
         descriptions = []
         for _pf in info_pickels:
             if include_geo:
-                _id, theta_v, theta_s, azimuth_s = self.__extract_geometry_from_info(_pf)
-                descriptions.append(','.join([_id, str(theta_v), str(theta_s), str(azimuth_s)]))
-                descriptions_meta = 'product_id,theta_v,theta_s,elev_s,azimuth_s'
+                _id, _scene_center_time, theta_v, theta_s, azimuth_s, azimuth_v = self.__extract_geometry_from_info(_pf)
+                descriptions.append(','.join([_id, _scene_center_time, str(theta_v), str(theta_s), str(azimuth_s), str(azimuth_v)]))
+                descriptions_meta = 'product_id,theta_v,theta_s,azimuth_s'
             else:
                 descriptions.append(self.__extract_id_from_info(_pf))
                 descriptions_meta = 'product_id'
         ret, dst_crs = merge_tifs(tifs, output_f, descriptions=':'.join(descriptions),
-                         descriptions_meta=descriptions_meta, bandnames=bandnames,dst_crs=dst_crs)
+                                  descriptions_meta='product_id,theta_v,theta_s,azimuth_s,azimuth_v',
+                                  bandnames=bandnames, dst_crs=dst_crs)
         if ret == 1 and self.remove_download_tiles:
             shutil.rmtree(download_dir)
         return dst_crs
+
     def __extract_geometry_from_info(self, pickle_file):
         #     print(pickle_file)
         with open(pickle_file, 'rb') as f:
             info = pickle.load(f)
-        theta_v, theta_s, azimuth_s,azimuth_v= [0], [], [], [0]  ##set view zenith angle and azimuth 0. 
+        theta_v, theta_s, azimuth_s, azimuth_v = [0], [], [], [0]  ##set view zenith angle and azimuth 0.
         #     print(info['bands'][0].keys())
         properties = info['properties']
         for key in properties.keys():
             if 'SUN_ELEVATION' in key:
-                theta_s.append(90-float(properties[key])) ## convert SUN_ELEVATION to zenith angle
+                theta_s.append(90 - float(properties[key]))  ## convert SUN_ELEVATION to zenith angle
             if 'SUN_AZIMUTH' in key:
                 azimuth_s.append(properties[key])
-        theta_v, theta_s, azimuth_s ,azimuth_v= np.asarray(theta_v), np.asarray(theta_s), np.asarray(azimuth_s), np.asarray(azimuth_v)
-        return (properties['LANDSAT_PRODUCT_ID'], theta_v.mean(), theta_s.mean(), azimuth_s.mean(), azimuth_v.mean())
+        theta_v, theta_s, azimuth_s, azimuth_v = np.asarray(theta_v), np.asarray(theta_s), np.asarray(
+            azimuth_s), np.asarray(azimuth_v)
+        return (properties['LANDSAT_PRODUCT_ID'], properties['SCENE_CENTER_TIME'], theta_v.mean(), theta_s.mean(), azimuth_s.mean(), azimuth_v.mean())
     def __extract_id_from_info(self, pickle_file):
         with open(pickle_file,'rb') as f:
             info = pickle.load(f)
@@ -666,7 +672,7 @@ if __name__ == '__main__':
         #                      end_date='2021-08-31',
         #                      download_l2_rgb=True)
         # downloader.L9_oli(start_date='2021-08-01',end_date='2021-08-31',l1=True,l2rgb=True, l2=True)
-        downloader.download_L9(start_date='2021-10-01', end_date='2024-01-31', l1=True, l2rgb=True, l2=True)
+        downloader.download_L9(start_date='2021-10-31', end_date='2024-01-31', l1=True, l2rgb=False, l2=False)
         # downloader.L9_oli(start_date='2019-08-01', end_date='2019-08-31', l1=False, l2rgb=False,l2=True)
     # download_dir = "C:/Users/pany0/OneDrive/Desktop/geedownload_test/l2_surf/00007_HBE_5150879N7954083W_20KM/2021-08-07"
     # downloader.merge_download_dir(download_dir,level='l2')

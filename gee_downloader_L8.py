@@ -633,8 +633,8 @@ class Downloader(object):
         descriptions = []
         for _pf in info_pickels:
             if include_geo:
-                _id, theta_v, theta_s, azimuth_s, azimuth_v = self.__extract_geometry_from_info(_pf)
-                descriptions.append(','.join([_id, str(theta_v), str(theta_s), str(azimuth_s), str(azimuth_v)]))
+                _id, _scene_center_time, theta_v, theta_s, azimuth_s, azimuth_v = self.__extract_geometry_from_info(_pf)
+                descriptions.append(','.join([_id, _scene_center_time, str(theta_v), str(theta_s), str(azimuth_s), str(azimuth_v)]))
                 descriptions_meta = 'product_id,theta_v,theta_s,azimuth_s'
             else:
                 descriptions.append(self.__extract_id_from_info(_pf))
@@ -657,7 +657,7 @@ class Downloader(object):
             if 'SUN_AZIMUTH' in key:
                 azimuth_s.append(properties[key])
         theta_v, theta_s, azimuth_s ,azimuth_v= np.asarray(theta_v), np.asarray(theta_s), np.asarray(azimuth_s), np.asarray(azimuth_v)
-        return (properties['LANDSAT_PRODUCT_ID'], theta_v.mean(), theta_s.mean(), azimuth_s.mean(), azimuth_v.mean())
+        return (properties['LANDSAT_PRODUCT_ID'],  properties['SCENE_CENTER_TIME'], theta_v.mean(), theta_s.mean(), azimuth_s.mean(), azimuth_v.mean())
     def __extract_id_from_info(self, pickle_file):
         with open(pickle_file,'rb') as f:
             info = pickle.load(f)
@@ -682,7 +682,7 @@ if __name__ == '__main__':
         #                      end_date='2021-08-31',
         #                      download_l2_rgb=True)
         # downloader.l8_oli(start_date='2021-08-01',end_date='2021-08-31',l1=True,l2rgb=True, l2=True)
-        downloader.download_L8(start_date='2023-04-01', end_date='2023-10-31', l1=True, l2rgb=True, l2=True)
+        downloader.download_L8(start_date='2013-01-01', end_date='2023-12-31', l1=True, l2rgb=False, l2=False)
         # downloader.l8_oli(start_date='2019-08-01', end_date='2019-08-31', l1=False, l2rgb=False,l2=True)
     # download_dir = "C:/Users/pany0/OneDrive/Desktop/geedownload_test/l2_surf/00007_HBE_5150879N7954083W_20KM/2021-08-07"
     # downloader.merge_download_dir(download_dir,level='l2')
