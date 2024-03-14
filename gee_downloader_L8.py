@@ -18,6 +18,7 @@ from rasterio.io import MemoryFile
 from rasterio.merge import merge
 import ee
 from shapely.geometry import MultiPolygon
+os.environ['PROJ_LIB'] ="/home/thomas/miniconda3/envs/acolite/share/proj"
 
 def gen_subcells(cell_geometry: MultiPolygon, x_step=0.1, y_step=0.1, x_overlap=None, y_overlap=None):
     '''
@@ -81,8 +82,10 @@ def add_waterpixelsnumber_L8(images: ee.ImageCollection, roi_rect, resolution=10
     add number of water pixels based on the band of classification in L2 image
     '''
     def __f(image: ee.Image):
-        ndwi = image.normalizedDifference(['SR_B3', 'SR_B5'])  ## the resolution 20m
-        water_mask = ndwi.gt(0.01) ## water or (snow or ice)
+        opticalBands = image.select('SR_B.').multiply(0.0000275).add(-0.2)
+        image = image.addBands(srcImg=opticalBands, overwrite=True)
+        ndwi = image.normalizedDifference(['SR_B2', 'SR_B5'])  ## the resolution 20m
+        water_mask = ndwi.gt(0.1) ## water or (snow or ice)
         water = water_mask.rename('water')
         image = image.addBands(water)
         waterpixels = image.reduceRegion(
@@ -94,7 +97,6 @@ def add_waterpixelsnumber_L8(images: ee.ImageCollection, roi_rect, resolution=10
         return image.set('water_num', waterpixels)
     images = images.map(__f)
     return images
-
 def getQABits(image, start, end, mask):
     # Compute the bits we need to extract.
     pattern = 0
@@ -443,7 +445,6 @@ class Downloader(object):
         if total_pixels == 0:
             raise Exception('no water pixels')
         return cloud_pixels/total_pixels*100
-
     def download_L8(self, start_date, end_date, l1=True, l2rgb=True, l2=True, cloud_prob=True):
         insert_flag = False
         if not (l1 or l2rgb or l2):
@@ -632,14 +633,14 @@ class Downloader(object):
         descriptions = []
         for _pf in info_pickels:
             if include_geo:
-                _id, theta_v, theta_s, azimuth_s, azimuth_v = self.__extract_geometry_from_info(_pf)
-                descriptions.append(','.join([_id, str(theta_v), str(theta_s), str(azimuth_s), str(azimuth_v)]))
-                descriptions_meta = 'product_id,theta_v,theta_s,elev_s,azimuth_s'
+                _id, _scene_center_time, theta_v, theta_s, azimuth_s, azimuth_v = self.__extract_geometry_from_info(_pf)
+                descriptions.append(','.join([_id, _scene_center_time, str(theta_v), str(theta_s), str(azimuth_s), str(azimuth_v)]))
+                descriptions_meta = 'product_id,theta_v,theta_s,azimuth_s'
             else:
                 descriptions.append(self.__extract_id_from_info(_pf))
                 descriptions_meta = 'product_id'
         ret, dst_crs = merge_tifs(tifs, output_f, descriptions=':'.join(descriptions),
-                         descriptions_meta=descriptions_meta, bandnames=bandnames,dst_crs=dst_crs)
+                         descriptions_meta='product_id,theta_v,theta_s,azimuth_s,azimuth_v', bandnames=bandnames,dst_crs=dst_crs)
         if ret == 1 and self.remove_download_tiles:
             shutil.rmtree(download_dir)
         return dst_crs
@@ -656,7 +657,7 @@ class Downloader(object):
             if 'SUN_AZIMUTH' in key:
                 azimuth_s.append(properties[key])
         theta_v, theta_s, azimuth_s ,azimuth_v= np.asarray(theta_v), np.asarray(theta_s), np.asarray(azimuth_s), np.asarray(azimuth_v)
-        return (properties['LANDSAT_PRODUCT_ID'], theta_v.mean(), theta_s.mean(), azimuth_s.mean(), azimuth_v.mean())
+        return (properties['LANDSAT_PRODUCT_ID'],  properties['SCENE_CENTER_TIME'], theta_v.mean(), theta_s.mean(), azimuth_s.mean(), azimuth_v.mean())
     def __extract_id_from_info(self, pickle_file):
         with open(pickle_file,'rb') as f:
             info = pickle.load(f)
@@ -665,11 +666,11 @@ class Downloader(object):
 
 
 if __name__ == '__main__':
-    grid_cells_dir = './'
+    grid_cells_dir = '/media/thomas/Arctus_data2/0_Arctus_Project/19_SAGEPORT/data/geojson/Default_AOI_geojson/'
     configdic = {'over_write':False,'remove_download_tiles':True}
     downloader = Downloader(water_threshold=5,
                         water_threshold_regular=10,
-                        savedir="./",**configdic)
+                        savedir="/media/thomas/Arctus_data2/0_Arctus_Project/19_SAGEPORT/data/l8_gee_Contrecoeur/",**configdic)
     # filename = os.listdir(grid_cells_dir)[6]
     # geojson_f = os.path.join(grid_cells_dir, filename)
     def download_cell(downloader, geojson_f):
@@ -681,7 +682,7 @@ if __name__ == '__main__':
         #                      end_date='2021-08-31',
         #                      download_l2_rgb=True)
         # downloader.l8_oli(start_date='2021-08-01',end_date='2021-08-31',l1=True,l2rgb=True, l2=True)
-        downloader.download_L8(start_date='2013-08-20', end_date='2013-08-21', l1=True, l2rgb=True, l2=True,cloud_prob=False)
+        downloader.download_L8(start_date='2013-01-01', end_date='2023-12-31', l1=True, l2rgb=False, l2=False)
         # downloader.l8_oli(start_date='2019-08-01', end_date='2019-08-31', l1=False, l2rgb=False,l2=True)
     # download_dir = "C:/Users/pany0/OneDrive/Desktop/geedownload_test/l2_surf/00007_HBE_5150879N7954083W_20KM/2021-08-07"
     # downloader.merge_download_dir(download_dir,level='l2')
