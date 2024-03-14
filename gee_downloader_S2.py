@@ -726,29 +726,29 @@ class Downloader(object):
 
 
 
-if __name__ == '__main__':
-    grid_cells_dir = '/mnt/Ext_8T_andromede/0_ARCTUS_Projects/18_MEI_SDB2/geojson_rename/'
-    configdic = {'over_write':False,'remove_download_tiles':True}
-    downloader = Downloader(water_threshold=50,
-                        water_threshold_regular=10,
-                        savedir="/mnt/Ext_8T_andromede/0_ARCTUS_Projects/18_MEI_SDB2/data/s2_gee_HBE/",**configdic)
-    # filename = os.listdir(grid_cells_dir)[6]
-    # geojson_f = os.path.join(grid_cells_dir, filename)
-    def download_cell(downloader, geojson_f):
-        basename = os.path.basename(geojson_f)
-        gdf = gpd.read_file(geojson_f)
-        downloader.set_roi(gdf.geometry[0],roi_name=os.path.splitext(basename)[0])
-        print(os.path.splitext(basename)[0])
-        # downloader.download_s2l1(start_date='2021-08-01',
-        #                      end_date='2021-08-31',
-        #                      download_l2_rgb=True)
-        # downloader.download_s2(start_date='2021-08-01',end_date='2021-08-31',l1=True,l2rgb=True, l2=True)
-        downloader.download_s2(start_date='2022-08-01', end_date='2022-08-31', l1=True, l2rgb=True,l2=True)
-        # downloader.download_s2(start_date='2019-08-01', end_date='2019-08-31', l1=False, l2rgb=False,l2=True)
-    # download_dir = "C:/Users/pany0/OneDrive/Desktop/geedownload_test/l2_surf/00007_HBE_5150879N7954083W_20KM/2021-08-07"
-    # downloader.merge_download_dir(download_dir,level='l2')
-    geojson_fs = sorted(glob.glob(os.path.join(grid_cells_dir,'*geojson')))
-    for gf in geojson_fs[:]:
-        # if '00005_HBE_5143340N7901250W_20KM' not in gf:
-        #     continue
-        download_cell(downloader, gf)
+# if __name__ == '__main__':
+#     grid_cells_dir = '/mnt/Ext_8T_andromede/0_ARCTUS_Projects/18_MEI_SDB2/geojson_rename/'
+#     configdic = {'over_write':False,'remove_download_tiles':True}
+#     downloader = Downloader(water_threshold=50,
+#                         water_threshold_regular=10,
+#                         savedir="/mnt/Ext_8T_andromede/0_ARCTUS_Projects/18_MEI_SDB2/data/s2_gee_HBE/",**configdic)
+#     # filename = os.listdir(grid_cells_dir)[6]
+#     # geojson_f = os.path.join(grid_cells_dir, filename)
+#     def download_cell(downloader, geojson_f):
+#         basename = os.path.basename(geojson_f)
+#         gdf = gpd.read_file(geojson_f)
+#         downloader.set_roi(gdf.geometry[0],roi_name=os.path.splitext(basename)[0])
+#         print(os.path.splitext(basename)[0])
+#         # downloader.download_s2l1(start_date='2021-08-01',
+#         #                      end_date='2021-08-31',
+#         #                      download_l2_rgb=True)
+#         # downloader.download_s2(start_date='2021-08-01',end_date='2021-08-31',l1=True,l2rgb=True, l2=True)
+#         downloader.download_s2(start_date='2022-08-01', end_date='2022-08-31', l1=True, l2rgb=True,l2=True)
+#         # downloader.download_s2(start_date='2019-08-01', end_date='2019-08-31', l1=False, l2rgb=False,l2=True)
+#     # download_dir = "C:/Users/pany0/OneDrive/Desktop/geedownload_test/l2_surf/00007_HBE_5150879N7954083W_20KM/2021-08-07"
+#     # downloader.merge_download_dir(download_dir,level='l2')
+#     geojson_fs = sorted(glob.glob(os.path.join(grid_cells_dir,'*geojson')))
+#     for gf in geojson_fs[:]:
+#         # if '00005_HBE_5143340N7901250W_20KM' not in gf:
+#         #     continue
+#         download_cell(downloader, gf)

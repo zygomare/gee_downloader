@@ -1,4 +1,12 @@
-from gee_downloader import *
+sensor = 'S2'
+import os, geopandas as gpd
+
+if sensor == 'L9':
+    from gee_downloader_L9 import *
+elif sensor == 'L8':
+    from gee_downloader_L8 import *
+else:
+    from gee_downloader_S2 import *
 
 save_dir = "C:/Users/pany0/WorkSpace/projects/SDB_2023/geedownload_test2"
 grid_cells_dir = "C:/Users/pany0/WorkSpace/projects/SDB_2023/geojson_rename"
