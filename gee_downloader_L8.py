@@ -383,11 +383,11 @@ class Downloader(object):
             },
             'l8_oli_l1': {
                 'data_source': 'LANDSAT/LC08/C02/T1_TOA',
-                'download_bands': ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B11', 'QA_PIXEL']
+                'download_bands': ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B9', 'B10', 'B11', 'QA_PIXEL']
             },
             'l9_oli_l1': {
                 'data_source': 'LANDSAT/LC09/C02/T1_TOA',
-                'download_bands': ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B11', 'QA_PIXEL']
+                'download_bands': ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8','B9', 'B10', 'B11', 'QA_PIXEL']
             },
             'l8_oli_l2': {
                 'data_source': 'LANDSAT/LC08/C02/T1_L2',
