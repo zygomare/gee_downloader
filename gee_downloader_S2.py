@@ -449,7 +449,7 @@ class Downloader(object):
 
 
 
-    def download_s2(self, start_date, end_date, l1=True, l2rgb=True, l2=True, cloud_prob=True):
+    def download_S2(self, start_date, end_date, l1=True, l2rgb=True, l2=True, cloud_prob=True):
         insert_flag = False
         if not (l1 or l2rgb or l2):
             print("l1 or l2rgb or l2?")

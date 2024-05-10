@@ -445,6 +445,7 @@ class Downloader(object):
         if total_pixels == 0:
             raise Exception('no water pixels')
         return cloud_pixels/total_pixels*100
+
     def download_L8(self, start_date, end_date, l1=True, l2rgb=True, l2=True, cloud_prob=True):
         insert_flag = False
         if not (l1 or l2rgb or l2):
@@ -634,8 +635,8 @@ class Downloader(object):
         for _pf in info_pickels:
             if include_geo:
                 _id, _scene_center_time, theta_v, theta_s, azimuth_s, azimuth_v = self.__extract_geometry_from_info(_pf)
-                descriptions.append(','.join([_id, _scene_center_time, str(theta_v), str(theta_s), str(azimuth_s), str(azimuth_v)]))
-                descriptions_meta = 'product_id,theta_v,theta_s,azimuth_s'
+                descriptions.append(','.join([_id, _scene_center_time.replace(':','-'), str(theta_v), str(theta_s), str(azimuth_s), str(azimuth_v)]))
+                descriptions_meta = 'product_id,scene_center_time, theta_v,theta_s,azimuth_s'
             else:
                 descriptions.append(self.__extract_id_from_info(_pf))
                 descriptions_meta = 'product_id'
@@ -665,29 +666,29 @@ class Downloader(object):
 
 
 
-if __name__ == '__main__':
-    grid_cells_dir = '/media/thomas/Arctus_data2/0_Arctus_Project/19_SAGEPORT/data/geojson/Default_AOI_geojson/'
-    configdic = {'over_write':False,'remove_download_tiles':True}
-    downloader = Downloader(water_threshold=5,
-                        water_threshold_regular=10,
-                        savedir="/media/thomas/Arctus_data2/0_Arctus_Project/19_SAGEPORT/data/l8_gee_Contrecoeur/",**configdic)
-    # filename = os.listdir(grid_cells_dir)[6]
-    # geojson_f = os.path.join(grid_cells_dir, filename)
-    def download_cell(downloader, geojson_f):
-        basename = os.path.basename(geojson_f)
-        gdf = gpd.read_file(geojson_f)
-        downloader.set_roi(gdf.geometry[0],roi_name=os.path.splitext(basename)[0])
-        print(os.path.splitext(basename)[0])
-        # downloader.l8_oli(start_date='2021-08-01',
-        #                      end_date='2021-08-31',
-        #                      download_l2_rgb=True)
-        # downloader.l8_oli(start_date='2021-08-01',end_date='2021-08-31',l1=True,l2rgb=True, l2=True)
-        downloader.download_L8(start_date='2013-01-01', end_date='2023-12-31', l1=True, l2rgb=False, l2=False)
-        # downloader.l8_oli(start_date='2019-08-01', end_date='2019-08-31', l1=False, l2rgb=False,l2=True)
-    # download_dir = "C:/Users/pany0/OneDrive/Desktop/geedownload_test/l2_surf/00007_HBE_5150879N7954083W_20KM/2021-08-07"
-    # downloader.merge_download_dir(download_dir,level='l2')
-    geojson_fs = sorted(glob.glob(os.path.join(grid_cells_dir,'*geojson')))
-    for gf in geojson_fs[:]:
-        # if '00005_HBE_5143340N7901250W_20KM' not in gf:
-        #     continue
-        download_cell(downloader, gf)
+# if __name__ == '__main__':
+#     grid_cells_dir = '/media/thomas/Arctus_data2/0_Arctus_Project/19_SAGEPORT/data/geojson/Default_AOI_geojson/'
+#     configdic = {'over_write':False,'remove_download_tiles':True}
+#     downloader = Downloader(water_threshold=5,
+#                         water_threshold_regular=10,
+#                         savedir="/media/thomas/Arctus_data2/0_Arctus_Project/19_SAGEPORT/data/l8_gee_Contrecoeur/",**configdic)
+#     # filename = os.listdir(grid_cells_dir)[6]
+#     # geojson_f = os.path.join(grid_cells_dir, filename)
+#     def download_cell(downloader, geojson_f):
+#         basename = os.path.basename(geojson_f)
+#         gdf = gpd.read_file(geojson_f)
+#         downloader.set_roi(gdf.geometry[0],roi_name=os.path.splitext(basename)[0])
+#         print(os.path.splitext(basename)[0])
+#         # downloader.l8_oli(start_date='2021-08-01',
+#         #                      end_date='2021-08-31',
+#         #                      download_l2_rgb=True)
+#         # downloader.l8_oli(start_date='2021-08-01',end_date='2021-08-31',l1=True,l2rgb=True, l2=True)
+#         downloader.download_L8(start_date='2013-01-01', end_date='2023-12-31', l1=True, l2rgb=False, l2=False)
+#         # downloader.l8_oli(start_date='2019-08-01', end_date='2019-08-31', l1=False, l2rgb=False,l2=True)
+#     # download_dir = "C:/Users/pany0/OneDrive/Desktop/geedownload_test/l2_surf/00007_HBE_5150879N7954083W_20KM/2021-08-07"
+#     # downloader.merge_download_dir(download_dir,level='l2')
+#     geojson_fs = sorted(glob.glob(os.path.join(grid_cells_dir,'*geojson')))
+#     for gf in geojson_fs[:]:
+#         # if '00005_HBE_5143340N7901250W_20KM' not in gf:
+#         #     continue
+#         download_cell(downloader, gf)
