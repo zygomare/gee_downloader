@@ -4,4 +4,4 @@ GEE are limited.
 
 
 example of use:
-python gee_downloader.py -c download.ini
+python main.py -c download.ini
