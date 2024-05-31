@@ -6,7 +6,7 @@ import pickle
 import ee
 import pendulum
 
-from .exceptions import NoEEImageFoundError, EEImageOverlayError
+from .exceptions import NoEEImageFoundError, EEImageOverlayError, BigQueryError
 
 def extract_geometry_from_info(pickle_file):
     #     print(pickle_file)
@@ -372,11 +372,11 @@ def get_obsgeo(pickle_file):
         try:
             query_job = client.query(query_str)  # API request
         except Exception as e:
-            raise
+            raise BigQueryError(query_str=query_str)
         rows_df = query_job.result().to_dataframe()  # Waits for query to finish
         if rows_df.shape[0] < 1:
-            raise
-            return
+            raise NoEEImageFoundError(ee_source=query_str,date='')
+
         base_url = rows_df.iloc[0]['base_url']
         granule_id = rows_df.iloc[0]['granule_id']
         # manifest_safe_url = f'{base_url}/manifest.safe'

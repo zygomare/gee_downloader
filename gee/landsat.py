@@ -111,7 +111,7 @@ def get_descriptions_l8_l1toa(download_dir):
             acquisition_time = _id.split('_')[2][:13]
         if prefix == '':
             prefix = '_'.join(_id.split('_')[:2])
-        descriptions.append(','.join([_id, str(theta_s), str(theta_s), str(phi_s)]))
+        descriptions.append(','.join([_id, str(theta_s), str(phi_s)]))
 
         # descriptions.append(self.__extract_id_from_info(_pf))
         #  descriptions_meta = 'product_id'
