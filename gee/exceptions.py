@@ -21,4 +21,11 @@ class NoEEIntersectionBandsError(Exception):
         super().__init__(self.msg)
 
 
+class BigQueryError(Exception):
+    def __init__(self, query_str):
+        self.msg = f"BigQueryError: {query_str}"
+        super().__init__(self.msg)
+
+
+
 

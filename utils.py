@@ -77,6 +77,30 @@ def reproject_raster_dataset(src, dst_crs):
         #     yield dataset  # Note yield not return as we're a contextmanager
         return memfile.open()
 
+
+def mosaic_tifs(tif_files, dst_crs=None):
+    '''
+    mosia tifs , only return the array, transform and crs
+    '''
+    tif_files = sorted(tif_files, key=lambda x: os.path.getsize(x))
+    src_files_to_mosaic = []
+    dst_crs_ret = dst_crs
+
+    for i, tif in enumerate(tif_files[::-1]):
+        src = rasterio.open(tif, 'r')
+        crs = src.meta['crs']
+        if dst_crs_ret is None:
+            dst_crs_ret = crs
+            src_files_to_mosaic.append(src)
+            continue
+        if crs == dst_crs_ret:
+            src_files_to_mosaic.append(src)
+            continue
+        reproj_src = reproject_raster_dataset(src, dst_crs=dst_crs_ret)
+        src_files_to_mosaic.append(reproj_src)
+    mosaic, out_trans = merge(src_files_to_mosaic)
+    return mosaic, out_trans,dst_crs_ret
+
 def merge_tifs(tif_files,
                out_file,
                descriptions,
