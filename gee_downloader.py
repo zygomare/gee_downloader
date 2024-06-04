@@ -15,7 +15,9 @@ class GEEDownloader(Downloader):
         try:
             ee.Initialize()
         except Exception as e:
-            print(e)
+            print('try authenticate')
+            ee.Authenticate()
+            ee.Initialize()
             sys.exit(-1)
         super(GEEDownloader, self).__init__(**config)
         self.aoi_rect_ee = ee.Geometry.Rectangle(self.aoi_bounds)

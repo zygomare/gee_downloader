@@ -6,7 +6,7 @@ import pickle
 import ee
 import pendulum
 
-from .exceptions import NoEEImageFoundError, EEImageOverlayError, BigQueryError
+from .exceptions import NoEEImageFoundError, EEImageOverlayError, BigQueryError, OldSentinelFormat
 
 def extract_geometry_from_info(pickle_file):
     #     print(pickle_file)
@@ -325,6 +325,10 @@ def get_prodid(pickle_file):
     with open(pickle_file, 'rb') as f:
         info = pickle.load(f)
     proid = info['properties']['PRODUCT_ID']
+
+    ## invalid
+    if proid.find('OPER') > -1:
+        return None
     return proid
 
 def get_obsgeo_from_MTD_TL(MTD_TL_XML):
@@ -359,21 +363,27 @@ def get_obsgeo_from_MTD_TL(MTD_TL_XML):
 def get_obsgeo(pickle_file):
     try:
         client = bigquery.Client()
-    except:
+    except Exception as e:
         from google.cloud import bigquery
         client = bigquery.Client()
+
     mtd_tl_xml_file = pickle_file.replace('_info.pickle', '_MTD_TL.xml')
     if not os.path.exists(mtd_tl_xml_file):
         proid = get_prodid(pickle_file)
+        if proid is None:
+            raise OldSentinelFormat(message=pickle_file)
 
         query_str = (
                     'SELECT granule_id,product_id,base_url,north_lat,south_lat,west_lon,east_lon FROM `bigquery-public-data.cloud_storage_geo_index.sentinel_2_index`'
                     'WHERE product_id = ' + f'"{proid}"')
         try:
             query_job = client.query(query_str)  # API request
+            rows_df = query_job.result().to_dataframe()  # Waits for query to finish
         except Exception as e:
-            raise BigQueryError(query_str=query_str)
-        rows_df = query_job.result().to_dataframe()  # Waits for query to finish
+            print(e)
+            print("try---> gcloud auth application-default login; pip install db_types")
+            # raise BigQueryError(query_str=query_str)
+
         if rows_df.shape[0] < 1:
             raise NoEEImageFoundError(ee_source=query_str,date='')
 

@@ -27,5 +27,18 @@ class BigQueryError(Exception):
         super().__init__(self.msg)
 
 
+class OldFormat(Exception):
+    def __init__(self, message):
+        self.msg = message
+        super().__init__(self.msg)
+
+class OldSentinelFormat(OldFormat):
+    def __init__(self, message):
+        self.msg = message
+        self.senor = 'sentinel'
+        super().__init__(f'old {self.senor}:{self.msg}')
+
+
+
 
 

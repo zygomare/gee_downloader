@@ -12,7 +12,7 @@ from rasterio.transform import Affine
 from shapely.geometry import MultiPolygon
 
 from utils import merge_tifs, mosaic_tifs
-from .exceptions import DownloadDirIncompleteError, NoEEIntersectionBandsError
+from .exceptions import DownloadDirIncompleteError, NoEEIntersectionBandsError, OldFormat
 
 def gen_subcells(cell_geometry: MultiPolygon, x_step=0.1, y_step=0.1, x_overlap=None, y_overlap=None):
     '''
@@ -172,7 +172,11 @@ def merge_download_dir_obsgeo(func_obsgeo, download_dir,
     output_f_ts = [] ## save the merged tif files for the same tiles, and these files will be further merged
 
     for pickle_file in info_pickels:
-        sza, vza, phi, transform_60 = func_obsgeo(pickle_file)
+        try:
+            sza, vza, phi, transform_60 = func_obsgeo(pickle_file)
+        except OldFormat as e:
+            print(e)
+            continue
         tilename = os.path.basename(pickle_file).split('_')[-2]
 
         tifs = [_ for _ in glob.glob(os.path.join(download_dir, f'*_{tilename}_*.tif')) if(os.path.getsize(_) / 1024.0) > 100]
