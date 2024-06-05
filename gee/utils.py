@@ -12,7 +12,9 @@ from rasterio.transform import Affine
 from shapely.geometry import MultiPolygon
 
 from utils import merge_tifs, mosaic_tifs
-from .exceptions import DownloadDirIncompleteError, NoEEIntersectionBandsError, OldFormat
+from .exceptions import DownloadDirIncompleteError, NoEEIntersectionBandsError, OldFormat, GsutilError
+
+import logging
 
 def gen_subcells(cell_geometry: MultiPolygon, x_step=0.1, y_step=0.1, x_overlap=None, y_overlap=None):
     '''
@@ -170,13 +172,16 @@ def merge_download_dir_obsgeo(func_obsgeo, download_dir,
     info_pickels = glob.glob(os.path.join(download_dir, "*.pickle"))
 
     output_f_ts = [] ## save the merged tif files for the same tiles, and these files will be further merged
-
     for pickle_file in info_pickels:
         try:
             sza, vza, phi, transform_60 = func_obsgeo(pickle_file)
         except OldFormat as e:
             print(e)
             continue
+        except GsutilError as e:
+            print(e)
+            continue
+
         tilename = os.path.basename(pickle_file).split('_')[-2]
 
         tifs = [_ for _ in glob.glob(os.path.join(download_dir, f'*_{tilename}_*.tif')) if(os.path.getsize(_) / 1024.0) > 100]
@@ -236,13 +241,17 @@ def merge_download_dir_obsgeo(func_obsgeo, download_dir,
             dst.write(mosaic)
 
         output_f_ts.append(output_f_t)
+    if len(output_f_ts) > 0:
+        bandnames += ['sza', 'vza', 'phi']
+    else:
+        logging.warning('OBSGEO is not available, using the mean values for the entire scene!')
+        output_f_ts = [_ for _ in glob.glob(os.path.join(download_dir, f'*.tif')) if(os.path.getsize(_) / 1024.0) > 100]
 
-    bandnames += ['sza', 'vza', 'phi']
     ret, dst_crs = merge_tifs(output_f_ts, output_f, descriptions=':'.join(descriptions),
-                                  descriptions_meta=descriptions_meta,
-                                  bandnames=bandnames,
-                                  dst_crs=dst_crs,
-                                  **extra_info)
+                              descriptions_meta=descriptions_meta,
+                              bandnames=bandnames,
+                              dst_crs=dst_crs,
+                              **extra_info)
 
     if ret == 1 and remove_temp:
         shutil.rmtree(download_dir)

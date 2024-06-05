@@ -6,7 +6,11 @@ import pickle
 import ee
 import pendulum
 
-from .exceptions import NoEEImageFoundError, EEImageOverlayError, BigQueryError, OldSentinelFormat
+from .exceptions import NoEEImageFoundError, \
+    EEImageOverlayError, \
+    BigQueryError, \
+    OldSentinelFormat,\
+    GsutilError
 
 def extract_geometry_from_info(pickle_file):
     #     print(pickle_file)
@@ -373,6 +377,7 @@ def get_obsgeo(pickle_file):
         if proid is None:
             raise OldSentinelFormat(message=pickle_file)
 
+
         query_str = (
                     'SELECT granule_id,product_id,base_url,north_lat,south_lat,west_lon,east_lon FROM `bigquery-public-data.cloud_storage_geo_index.sentinel_2_index`'
                     'WHERE product_id = ' + f'"{proid}"')
@@ -389,10 +394,16 @@ def get_obsgeo(pickle_file):
 
         base_url = rows_df.iloc[0]['base_url']
         granule_id = rows_df.iloc[0]['granule_id']
+        if (base_url is None) or (granule_id is None):
+            raise GsutilError('base_url or granule_id is None, check')
         # manifest_safe_url = f'{base_url}/manifest.safe'
         # mtd_msil1c_xml_url = f'{base_url}/MTD_MSIL1C.xml'
         mtd_tl_xml_url = f'{base_url}/GRANULE/{granule_id}/MTD_TL.xml'
         os.system(f'gsutil -m cp -r {mtd_tl_xml_url} {mtd_tl_xml_file}')
+        if not os.path.exists(mtd_tl_xml_file):
+            raise GsutilError(f'failed: gsutil -m cp -r {mtd_tl_xml_url} {mtd_tl_xml_file}')
+
+
 
     obsgeo_dic = get_obsgeo_from_MTD_TL(mtd_tl_xml_file)
     ###

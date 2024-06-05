@@ -5,6 +5,12 @@ from plumbum import cli
 from plumbum import colors
 
 from utils import covert_config_to_dic, colorstr
+try:
+    import gdal
+except:
+    from osgeo import gdal
+
+gdal.PushErrorHandler('CPLQuietErrorHandler')
 
 prefix = colorstr('red', 'bold', 'CONFIG DOES NOT EXIST:')
 

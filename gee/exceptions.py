@@ -38,6 +38,14 @@ class OldSentinelFormat(OldFormat):
         self.senor = 'sentinel'
         super().__init__(f'old {self.senor}:{self.msg}')
 
+class GsutilError(Exception):
+    def __init__(self, message):
+        self.msg = message
+        super().__init__(self.msg)
+
+
+
+
 
 
 
