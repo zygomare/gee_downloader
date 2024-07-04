@@ -55,6 +55,9 @@ def get_descriptions_l1toa(download_dir):
 def get_descriptions_l2rgb(download_dir):
     return get_descriptions_l1toa(download_dir)
 
+def get_descriptions_l2surf(download_dir):
+    return get_descriptions_l1toa(download_dir)
+
 
 
 
@@ -379,7 +382,7 @@ def get_obsgeo(pickle_file):
 
 
         query_str = (
-                    'SELECT granule_id,product_id,base_url,north_lat,south_lat,west_lon,east_lon FROM `bigquery-public-data.cloud_storage_geo_index.sentinel_2_index`'
+                    'SELECT granule_id,product_id,base_url,source_url,north_lat,south_lat,west_lon,east_lon FROM `bigquery-public-data.cloud_storage_geo_index.sentinel_2_index`'
                     'WHERE product_id = ' + f'"{proid}"')
         try:
             query_job = client.query(query_str)  # API request
@@ -394,6 +397,8 @@ def get_obsgeo(pickle_file):
 
         base_url = rows_df.iloc[0]['base_url']
         granule_id = rows_df.iloc[0]['granule_id']
+        if base_url is None:
+            base_url = rows_df.iloc[0]['source_url'] ## for some data, the URL is stored in the column of 'source_url'
         if (base_url is None) or (granule_id is None):
             raise GsutilError('base_url or granule_id is None, check')
         # manifest_safe_url = f'{base_url}/manifest.safe'
