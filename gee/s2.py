@@ -423,7 +423,7 @@ def get_obsgeo(pickle_file):
     ## raa along 180 degree symmetry
     tmp = np.where(phi > 180)
     phi[tmp] = np.abs(phi[tmp] - 360)
-    return sza, vza, phi, obsgeo_dic['transform_60']
+    return sza, vza, phi, obsgeo_dic['transform_60'], obsgeo_dic['epsg_crs']
 
 
 
@@ -437,7 +437,7 @@ def get_obsgeo_fromdir(download_dir):
 
     info_pickels = glob.glob(os.path.join(download_dir, "*.pickle"))
     for pickle_file in info_pickels:
-        sza, vza, phi,transform_60 = get_obsgeo(pickle_file)
+        sza, vza, phi,transform_60, eosg_crs = get_obsgeo(pickle_file)
         print('ok')
 
 

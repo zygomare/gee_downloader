@@ -143,7 +143,10 @@ def merge_download_dir(download_dir,
                        RGB = False,
                        min_max = (None, None),
                        **extra_info):
-    tifs = [_ for _ in glob.glob(os.path.join(download_dir, f'*_*_*.tif')) if(os.path.getsize(_) / 1024.0) > 100]
+
+    ### the minimum size should vary with the resolution and grid size,
+    ### to be fixed
+    tifs = [_ for _ in glob.glob(os.path.join(download_dir, f'*_*_*.tif')) if(os.path.getsize(_) / 1024.0) > 20 ]
     if len(tifs) < 1:
         raise DownloadDirIncompleteError(download_dir)
 
@@ -174,13 +177,15 @@ def merge_download_dir_obsgeo(func_obsgeo, download_dir,
     output_f_ts = [] ## save the merged tif files for the same tiles, and these files will be further merged
     for pickle_file in info_pickels:
         try:
-            sza, vza, phi, transform_60 = func_obsgeo(pickle_file)
+            sza, vza, phi, transform_60,epsg_crs = func_obsgeo(pickle_file)
         except OldFormat as e:
             print(e)
             continue
         except GsutilError as e:
             print(e)
             continue
+
+
 
         tilename = os.path.basename(pickle_file).split('_')[-2]
 
@@ -190,8 +195,32 @@ def merge_download_dir_obsgeo(func_obsgeo, download_dir,
 
         output_f_t = '_'.join(tifs[0].split('_')[:-1])+'.tif'
 
-
         mosaic, transform_img, dst_crs = mosaic_tifs(tifs, dst_crs=dst_crs)
+
+        ########## debug ################
+        # meta = {"driver": "GTiff",
+        #  "height": sza.shape[0],
+        #  "width": sza.shape[1],
+        #  "transform": transform_60,
+        #  "count": 1,
+        #  "crs": epsg_crs,
+        # "dtype": rasterio.float32
+        #  }
+        # with rasterio.open(output_f_t.replace('.tif', '-GEO.tif'), 'w', **meta) as dst:
+        #     dst.write(sza, 1)
+        # meta = {"driver": "GTiff",
+        #  "height": mosaic.shape[1],
+        #  "width": mosaic.shape[2],
+        #  "transform": transform_img,
+        #  "count": 1,
+        #  "crs": dst_crs,
+        # "dtype": rasterio.float32
+        #  }
+        # with rasterio.open(output_f_t, 'w', **meta) as dst:
+        #     dst.write(mosaic[2],1)
+        ########## debug ################
+
+
         ulx_img, uly_img, resolution_img = transform_img[2], transform_img[5], transform_img[0]
         nrows_img, ncols_img = mosaic.shape[1], mosaic.shape[2]
 
@@ -204,6 +233,9 @@ def merge_download_dir_obsgeo(func_obsgeo, download_dir,
         e_col,e_row = min(ncols_img_60+i_col, sza.shape[1]-1),  min(nrows_img_60+i_row, sza.shape[0]-1)
 
         ### interpolate to the resolution of the image
+
+        if e_row >= sza.shape[0]-2 or e_col >= sza.shape[1]-2:
+            continue
         sza_img = zoom(sza[i_row: e_row, i_col:e_col], 60.0/resolution_img)
         vza_img = zoom(vza[i_row: e_row, i_col:e_col], 60.0 / resolution_img)
         phi_img = zoom(phi[i_row: e_row, i_col:e_col], 60.0 / resolution_img)
@@ -220,6 +252,8 @@ def merge_download_dir_obsgeo(func_obsgeo, download_dir,
         vza_img_new = np.pad(vza_img, pad_width=2, mode='edge')[i_row_img+2: i_row_img + nrows_img+2, i_col_img+2:i_col_img + ncols_img+2]
         phi_img_new = np.pad(phi_img, pad_width=2, mode='edge')[i_row_img+2: i_row_img + nrows_img+2, i_col_img+2:i_col_img + ncols_img+2]
 
+        if sza_img_new.shape != (mosaic[0].shape[0], mosaic[0].shape[1]):
+            continue
 
         meta = {"driver": "GTiff",
          "height": nrows_img,
@@ -231,10 +265,15 @@ def merge_download_dir_obsgeo(func_obsgeo, download_dir,
          }
 
         obs_geo_arr = np.full((3,) + mosaic[0].shape, 0, dtype=np.float32)
-        valid_mask = mosaic[2] > 0
-        obs_geo_arr[0, valid_mask] = sza_img_new[valid_mask]
-        obs_geo_arr[1, valid_mask] = vza_img_new[valid_mask]
-        obs_geo_arr[2, valid_mask] = phi_img_new[valid_mask]
+        # valid_mask = mosaic[2] > 0
+        # obs_geo_arr[0, valid_mask] = sza_img_new[valid_mask]
+        # obs_geo_arr[1, valid_mask] = vza_img_new[valid_mask]
+        # obs_geo_arr[2, valid_mask] = phi_img_new[valid_mask]
+
+        obs_geo_arr[0] = sza_img_new
+        obs_geo_arr[1] = vza_img_new
+        obs_geo_arr[2] = phi_img_new
+
 
         mosaic = np.vstack([mosaic, obs_geo_arr])
         with rasterio.open(output_f_t, 'w', **meta) as dst:

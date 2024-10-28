@@ -22,11 +22,27 @@ class GEEDownloader(Downloader):
         super(GEEDownloader, self).__init__(**config)
         self.aoi_rect_ee = ee.Geometry.Rectangle(self.aoi_bounds)
 
-    def run(self):
-        ## 1. generate small cells
-        xs, ys = gen_subcells(self.aoi_geo, x_step=0.1, y_step=0.1)
+    def __create_cells(self, resolution):
+        # resolution = int(config['resolution'])
+        ## the cell size varies with the resolution
+        ## it is 0.1 when the resolution is 10 based on the previous experience
+        step = 0.1 * (resolution / 10)
+
+        x_step, y_step = step, step
+        print('GEE cell size:', x_step, y_step)
+        xs, ys = gen_subcells(self.aoi_geo, x_step=x_step, y_step=x_step)
         self.ee_small_cells = [ee.Geometry.Rectangle([x[0], y[0], x[1], y[1]]) for x in xs for y in ys]
         self.ee_small_cells_box = [([x[0], y[0], x[1], y[1]]) for x in xs for y in ys]
+
+    def run(self):
+        ## 1. generate small cells
+        # x_step, y_step = float(self._config_dic['global']['grid_x']), float(self._config_dic['global']['grid_y'])
+        # print('GEE cell size:',x_step, y_step)
+        # xs, ys = gen_subcells(self.aoi_geo, x_step=x_step, y_step=x_step)
+        # self.ee_small_cells = [ee.Geometry.Rectangle([x[0], y[0], x[1], y[1]]) for x in xs for y in ys]
+        # self.ee_small_cells_box = [([x[0], y[0], x[1], y[1]]) for x in xs for y in ys]
+
+        self.__create_cells(resolution=10)
 
         self.download_imagecollection()
 
@@ -39,7 +55,10 @@ class GEEDownloader(Downloader):
         for prefix in image_collection_dic:
             sensor_type = image_collection_dic[prefix]['sensor_type']
             download_func = getattr(self, f'_download_{sensor_type}')
-            download_func(prefix, **image_collection_dic[prefix]['config'])
+
+            config =  image_collection_dic[prefix]['config']
+
+            download_func(prefix, **config)
             # self.download_func = getattr(self, f'_download_{prefix}')
             # self.download_func(image_collection_dic[prefix])
 
@@ -148,7 +167,6 @@ class GEEDownloader(Downloader):
                 print(e)
                 continue
 
-
     def _download_optical(self, prefix, **config):
         '''
         download optical image
@@ -162,6 +180,10 @@ class GEEDownloader(Downloader):
             water_mask = None
 
         for _date in (self.end_date - self.start_date):
+            # print(_date.month)
+            # if _date.month < 6 or _date.month>10:
+            #     print(_date.month, '-------skip')
+            #     continue
             ## 1. obtain cloud percentage
 
             func_cld = getattr(gee, f'get_{prefix}cld')

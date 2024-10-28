@@ -11,6 +11,7 @@ from .landsat import get_descriptions_l9_l2rgb as get_descriptions_lc09_l2rgb
 from .s2 import get_s2_cloudpercentage as get_s2cld
 from .s2 import get_descriptions_l1toa as get_descriptions_s2_l1toa
 from .s2 import get_descriptions_l2rgb as get_descriptions_s2_l2rgb
+from .s2 import get_descriptions_l2surf as get_descriptions_s2_l2surf
 from .s2 import get_obsgeo as get_obsgeo_s2_l1toa
 
 

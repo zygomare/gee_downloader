@@ -33,6 +33,7 @@ class App(cli.Application):
     def main(self, *args):
         from gee_downloader import GEEDownloader
         downloader = GEEDownloader(**self._config_dic)
+
         ext = os.path.splitext(self._config_f)[-1]
         now = datetime.datetime.now()
 
