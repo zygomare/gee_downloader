@@ -5,10 +5,13 @@ GEE are limited.
 requirements:
 rasterio, earthengine-api, google-cloud-bigquery, db_dtypes
 
-run these commands to authenticate gcloud
-gcloud auth login
-gcloud auth application-default login
-, and enable big query in your gcloud project
+In the browser, create a new project on google cloud, and enable big query + Google Earth Engine in your gcloud project 
+(also register your project to use G.E.E.: https://code.earthengine.google.com/register)
+
+run these commands to authenticate gcloud in the cli (inside the gee-downloader directory)
+$gcloud auth login
+$gcloud auth application-default login
+
 
 example of use:
 python main.py -c download.ini
