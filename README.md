@@ -2,8 +2,10 @@ Download images to local storage from Google Earth Engine in format of geotiff f
 Warns: it can be very slow if AOI is too large because the maximum number of pixels and dimensions of extent that can be downloaded from
 GEE are limited.
 
-requirements:  
-`rasterio, earthengine-api, google-cloud-bigquery, db_dtypes`
+Python requirements:  
+`rasterio, earthengine-api, google-cloud-bigquery, db_dtypes`  
+
+Install the `gcloud CLI` on your machine (https://cloud.google.com/sdk/docs/install)  
 
 In the browser, create a new project on google cloud, and enable big query + Google Earth Engine in your gcloud project 
 (also register your project to use G.E.E.: https://code.earthengine.google.com/register)
