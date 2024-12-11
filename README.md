@@ -10,7 +10,7 @@ Install the `gcloud CLI` on your machine (https://cloud.google.com/sdk/docs/inst
 In the browser, create a new project on google cloud, and enable big query + Google Earth Engine in your gcloud project 
 (also register your project to use G.E.E.: https://code.earthengine.google.com/register)
 
-run these commands to authenticate gcloud in the cli:  
+run these commands to authenticate gcloud in the cli:   
 (inside the gee-downloader directory)  
 (you might need to set the project id as created in the browser)  
 `gcloud auth login`  
