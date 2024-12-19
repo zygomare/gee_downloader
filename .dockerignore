@@ -1,0 +1,12 @@
+# Ignore the following files and directories
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+venv
+ENV
+.git
+.gitignore
+.DS_Store
