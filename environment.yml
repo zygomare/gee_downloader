@@ -1,0 +1,15 @@
+name: gee_downloader
+channels:
+  - conda-forge
+dependencies:
+  - python>=3.9
+  - numpy
+  - pandas
+  - rasterio
+  - scipy
+  - earthengine-api
+  - google-cloud-bigquery
+  - plumbum
+  - gdal
+  - pendulum
+  # - db_dtypes # this package needs to be installed using pip install
